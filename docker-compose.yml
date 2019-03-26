@@ -1,0 +1,88 @@
+# docker-compose.yml
+
+version: '3.2'
+
+services:
+ elasticsearch:
+   labels:
+     com.nm.service: "es"
+     com.nm.description: "For searching and indexing data"
+   image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.2.4
+   container_name: elk_es
+   volumes:
+     - ./elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+     # - ./esdata/:/usr/share/elasticsearch/data/
+   ports:
+     - "9200:9200"
+     - "9300:9300"
+   environment:
+     ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+   networks:
+     - elk
+ kibana:
+   labels:
+     com.nm.service: "kibana"
+     com.nm.description: "Data visualisation and for log aggregation"
+   image: docker.elastic.co/kibana/kibana-oss:6.2.4
+   container_name: elk_kibana
+   volumes:
+     - ./kibana.yml:/usr/share/kibana/config/kibana.yml
+   ports:
+     - "5601:5601"
+   networks:
+     - elk
+   depends_on:
+     - elasticsearch
+
+ logstash:
+   labels:
+     com.nm.service: "logstash"
+     com.nm.description: "For logging data"
+   image: docker.elastic.co/logstash/logstash-oss:6.2.4
+   container_name: elk_logstash
+   volumes:
+     - ./logstashsettings/logstash.yml:/usr/share/logstash/config/logstash.yml
+     - ./pipeline:/usr/share/logstash/pipeline
+   ports:
+     - "5000:5000"
+   environment:
+     LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+   networks:
+     - elk
+   depends_on:
+     - elasticsearch
+ filebeat:
+   labels:
+     com.nm.service: "filebeat"
+     com.nm.description: "Log forwarder"
+   image: docker.elastic.co/beats/filebeat:6.2.4
+   container_name: elk_filebeat
+   volumes:
+     - ./filebeat.yml:/usr/share/filebeat/filebeat.yml
+     - ./log:/var/log
+   networks:
+     - elk
+   depends_on:
+     - logstash
+
+ elastalert:
+   labels:
+     com.nm.service: "elastalert"
+     com.nm.description: "Alerting"
+   image: bitsensor/elastalert:latest
+   container_name: elk_elastalert
+   volumes:
+      - ./elastalert.yml:/opt/elastalert/config.yaml
+      - ./elastalert-server-config.json:/opt/elastalert-server/config/config.json
+      - ./rules:/opt/elastalert/rules
+      - ./rule_templates:/opt/elastalert/rule_templates
+   ports:
+      - "3030:3030"
+   networks:
+      - elk
+   depends_on:
+      - elasticsearch
+
+networks:
+  elk:
+    driver: bridge

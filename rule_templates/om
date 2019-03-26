@@ -1,0 +1,12 @@
+name: chgerror
+type: change
+index: dev-*
+new_style_string_format: True
+compare_key: om.Status
+ignore_null: true
+timeframe:
+  minutes: 5
+query_key: om.Name
+alert:
+  - command
+command: ["echo", " {match[om][Name]} error code {match[om][Status]}"]
